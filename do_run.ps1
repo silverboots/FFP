@@ -1,0 +1,1 @@
+ streamlit run .\Main_Menu.py

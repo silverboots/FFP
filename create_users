@@ -1,0 +1,7 @@
+drop table if exists Users;
+
+CREATE TABLE Users(
+email VARCHAR(50) PRIMARY KEY,
+name VARCHAR(255),
+password_hash VARCHAR(255),
+team_id INTERGER)
