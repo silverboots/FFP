@@ -47,3 +47,25 @@ def fetch_fpl_bootstrap() -> dict:
         raise FPLError("FPL response was not valid JSON") from e
 
     return data
+
+
+def fetch_fpl_fixtures() -> list[dict]:
+    url = f"{FPL_BASE_URL}/fixtures/"
+
+    try:
+        resp = requests.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.exceptions.HTTPError as e:
+        raise FPLError(f"FPL HTTP error: {e}") from e
+    except requests.exceptions.RequestException as e:
+        raise FPLError(f"FPL request failed: {e}") from e
+    except ValueError as e:
+        # .json() parse error
+        raise FPLError("FPL response was not valid JSON") from e
+
+    # Optional sanity check (fixtures endpoint returns a list)
+    if not isinstance(data, list):
+        raise FPLError("FPL fixtures response shape unexpected (expected list)")
+
+    return data
