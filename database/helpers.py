@@ -1,11 +1,28 @@
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
+from datetime import datetime
 
-from database.models import Team, Player
+from database.models import (
+    Team,
+    Player,
+    PlayerPastFixture,
+    PlayerUpcomingFixture,
+    PlayerPastSeason,
+    TeamMetric
+)
+
+
 from database.db import engine, Base
 
 from itertools import islice
+
+
+def parse_dt(value):
+    if value is None:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
 
 def init_db():
     Base.metadata.create_all(bind=engine)
@@ -41,23 +58,9 @@ def sync_teams(session: Session, api_teams: list[dict]):
     ids = [t["id"] for t in api_teams]
 
     with session.begin():
-        # 1) Upsert (INSERT or UPDATE)
         if rows:
-            stmt = insert(Team).values(rows)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[Team.team_id],
-                set_={c.name: getattr(stmt.excluded, c.name) for c in Team.__table__.columns if c.name != "team_id"},
-            )
-            session.execute(stmt)
-
-        # 2) Delete rows not in API
-        if ids:
-            session.execute(
-                delete(Team).where(Team.team_id.not_in(ids))
-            )
-        else:
-            # API returned empty list → delete all teams
             session.execute(delete(Team))
+            session.execute(insert(Team).values(rows))
 
 
 def chunked(iterable, size):
@@ -179,21 +182,203 @@ def sync_players(session: Session, api_players: list[dict]):
     ids = [p["id"] for p in api_players]
 
     with session.begin():
-        # 1) Chunked upsert
-        for batch in chunked(rows, 25):  # safe batch size for SQLite
-            stmt = insert(Player).values(batch)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[Player.player_id],
-                set_={
-                    c.name: getattr(stmt.excluded, c.name)
-                    for c in Player.__table__.columns
-                    if c.name != "player_id"
-                },
-            )
-            session.execute(stmt)
-
-        # 2) Delete players not in API
-        if ids:
-            session.execute(delete(Player).where(Player.player_id.not_in(ids)))
-        else:
+        if rows:
             session.execute(delete(Player))
+            # 1) Chunked insert
+            for batch in chunked(rows, 25):  # safe batch size for SQLite
+                session.execute(insert(Player).values(batch))
+
+
+def sync_player_past_fixtures(
+    session: Session,
+    api_fixtures: list[dict],
+):
+    print(f"sync player_past_fixtures : {len(api_fixtures)}")
+
+    rows = [
+        {
+            "fixture_id": f["fixture"],
+            "player_id": f["element"],
+            "opponent_team": f["opponent_team"],
+            "round": f["round"],
+            "was_home": f["was_home"],
+            "kickoff_time": parse_dt(f["kickoff_time"]),
+            "team_h_score": f["team_h_score"],
+            "team_a_score": f["team_a_score"],
+            "total_points": f["total_points"],
+            "minutes": f["minutes"],
+            "goals_scored": f["goals_scored"],
+            "assists": f["assists"],
+            "clean_sheets": f["clean_sheets"],
+            "goals_conceded": f["goals_conceded"],
+            "own_goals": f["own_goals"],
+            "penalties_saved": f["penalties_saved"],
+            "penalties_missed": f["penalties_missed"],
+            "yellow_cards": f["yellow_cards"],
+            "red_cards": f["red_cards"],
+            "saves": f["saves"],
+            "bonus": f["bonus"],
+            "bps": f["bps"],
+            "influence": float(f["influence"]),
+            "creativity": float(f["creativity"]),
+            "threat": float(f["threat"]),
+            "ict_index": float(f["ict_index"]),
+            "clearances_blocks_interceptions": f["clearances_blocks_interceptions"],
+            "recoveries": f["recoveries"],
+            "tackles": f["tackles"],
+            "defensive_contribution": f["defensive_contribution"],
+            "starts": f["starts"],
+            "expected_goals": float(f["expected_goals"]),
+            "expected_assists": float(f["expected_assists"]),
+            "expected_goal_involvements": float(f["expected_goal_involvements"]),
+            "expected_goals_conceded": float(f["expected_goals_conceded"]),
+            "value": f["value"],
+            "transfers_balance": f["transfers_balance"],
+            "selected": f["selected"],
+            "transfers_in": f["transfers_in"],
+            "transfers_out": f["transfers_out"],
+            "modified": f["modified"],
+        }
+        for f in api_fixtures
+    ]
+
+    with session.begin():
+        if rows:
+            session.execute(
+                delete(PlayerPastFixture)
+            )
+            # 1) Chunked insert
+            for batch in chunked(rows, 100):  # safe batch size for SQLite
+                session.execute(
+                    insert(PlayerPastFixture).values(batch)
+                )
+
+
+def sync_player_upcoming_fixtures(
+    session: Session,
+    api_fixtures: list[dict],
+):
+    print(f"sync player_upcoming_fixtures : {len(api_fixtures)}")
+
+    rows = [
+        {
+            "fixture_id": f["id"],
+            "player_id": f["player_id"],
+            "code": f["code"],
+            "team_h": f["team_h"],
+            "team_h_score": f["team_h_score"],
+            "team_a": f["team_a"],
+            "team_a_score": f["team_a_score"],
+            "event": f["event"],
+            "event_name": f["event_name"],
+            "finished": f["finished"],
+            "minutes": f["minutes"],
+            "provisional_start_time": f["provisional_start_time"],
+            "kickoff_time": parse_dt(f["kickoff_time"]),
+            "is_home": f["is_home"],
+            "difficulty": f["difficulty"],
+        }
+        for f in api_fixtures
+    ]
+
+    with session.begin():
+        if rows:
+            session.execute(
+                delete(PlayerUpcomingFixture)
+            )
+
+            # 1) Chunked insert
+            for batch in chunked(rows, 100):  # safe batch size for SQLite
+                session.execute(
+                    insert(PlayerUpcomingFixture).values(batch)
+                )
+
+def sync_player_past_seasons(
+    session: Session,
+    api_seasons: list[dict],
+):
+    print(f"sync player_past_seasons : {len(api_seasons)}")
+
+    rows = [
+        {
+            "season_name": s["season_name"],
+            "player_id": s["player_id"],
+            "element_code": s["element_code"],
+            "start_cost": s["start_cost"],
+            "end_cost": s["end_cost"],
+            "total_points": s["total_points"],
+            "minutes": s["minutes"],
+            "goals_scored": s["goals_scored"],
+            "assists": s["assists"],
+            "clean_sheets": s["clean_sheets"],
+            "goals_conceded": s["goals_conceded"],
+            "own_goals": s["own_goals"],
+            "penalties_saved": s["penalties_saved"],
+            "penalties_missed": s["penalties_missed"],
+            "yellow_cards": s["yellow_cards"],
+            "red_cards": s["red_cards"],
+            "saves": s["saves"],
+            "bonus": s["bonus"],
+            "bps": s["bps"],
+            "influence": float(s["influence"]),
+            "creativity": float(s["creativity"]),
+            "threat": float(s["threat"]),
+            "ict_index": float(s["ict_index"]),
+            "clearances_blocks_interceptions": s["clearances_blocks_interceptions"],
+            "recoveries": s["recoveries"],
+            "tackles": s["tackles"],
+            "defensive_contribution": s["defensive_contribution"],
+            "starts": s["starts"],
+            "expected_goals": float(s["expected_goals"]),
+            "expected_assists": float(s["expected_assists"]),
+            "expected_goal_involvements": float(s["expected_goal_involvements"]),
+            "expected_goals_conceded": float(s["expected_goals_conceded"]),
+        }
+        for s in api_seasons
+    ]
+
+    with session.begin():
+        if rows:
+            session.execute(
+                delete(PlayerPastSeason)
+            )
+
+             # 1) Chunked insert
+            for batch in chunked(rows, 100):  # safe batch size for SQLite
+                session.execute(
+                    insert(PlayerPastSeason).values(batch)
+                )
+def sync_team_metrics(
+    session: Session,
+    team_metrics: list[dict],
+):
+    print(f"sync team_metrics : {len(team_metrics)}")
+
+    rows = [
+        {
+            "team_id": t["team_id"],
+
+            "home_strength_attack": t.get("home_strength_attack"),
+            "home_strength_defence": t.get("home_strength_defence"),
+            "away_strength_attack": t.get("away_strength_attack"),
+            "away_strength_defence": t.get("away_strength_defence"),
+
+            "no_games_h": t["no_games_h"],
+            "no_games_a": t["no_games_a"],
+            "no_goals_scored_h": t["no_goals_scored_h"],
+            "no_goals_conceded_h": t["no_goals_conceded_h"],
+            "no_goals_scored_a": t["no_goals_scored_a"],
+            "no_goals_conceded_a": t["no_goals_conceded_a"],
+        }
+        for t in team_metrics
+    ]
+
+    with session.begin():
+        if rows:
+            # wipe and reinsert (same approach as teams / players)
+            session.execute(delete(TeamMetric))
+
+            for batch in chunked(rows, 25):  # SQLite safe
+                session.execute(
+                    insert(TeamMetric).values(batch)
+                )

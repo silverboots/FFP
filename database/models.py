@@ -1,6 +1,8 @@
-from sqlalchemy import String, Integer, Boolean, Date, Float
 from sqlalchemy.orm import Mapped, mapped_column
 from database.db import Base
+from datetime import datetime
+from sqlalchemy import Integer, Boolean, String, DateTime,Float
+
 
 class User(Base):
     __tablename__ = "Users"
@@ -173,3 +175,161 @@ class Player(Base):
     starts_per_90: Mapped[float] = mapped_column(Float, nullable=False)
     clean_sheets_per_90: Mapped[float] = mapped_column(Float, nullable=False)
     defensive_contribution_per_90: Mapped[float] = mapped_column(Float, nullable=False)
+
+class PlayerPastFixture(Base):
+    __tablename__ = "PlayerPastFixtures"
+
+    fixture_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    player_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    opponent_team: Mapped[int] = mapped_column(Integer, nullable=False)
+    round: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    was_home: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    kickoff_time: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
+
+    team_h_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    team_a_score: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    total_points: Mapped[int] = mapped_column(Integer, nullable=False)
+    minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    goals_scored: Mapped[int] = mapped_column(Integer, nullable=False)
+    assists: Mapped[int] = mapped_column(Integer, nullable=False)
+    clean_sheets: Mapped[int] = mapped_column(Integer, nullable=False)
+    goals_conceded: Mapped[int] = mapped_column(Integer, nullable=False)
+    own_goals: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    penalties_saved: Mapped[int] = mapped_column(Integer, nullable=False)
+    penalties_missed: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    yellow_cards: Mapped[int] = mapped_column(Integer, nullable=False)
+    red_cards: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    saves: Mapped[int] = mapped_column(Integer, nullable=False)
+    bonus: Mapped[int] = mapped_column(Integer, nullable=False)
+    bps: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    influence: Mapped[float] = mapped_column(nullable=False)
+    creativity: Mapped[float] = mapped_column(nullable=False)
+    threat: Mapped[float] = mapped_column(nullable=False)
+    ict_index: Mapped[float] = mapped_column(nullable=False)
+
+    clearances_blocks_interceptions: Mapped[int] = mapped_column(Integer, nullable=False)
+    recoveries: Mapped[int] = mapped_column(Integer, nullable=False)
+    tackles: Mapped[int] = mapped_column(Integer, nullable=False)
+    defensive_contribution: Mapped[int] = mapped_column(Integer, nullable=False)
+    starts: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    expected_goals: Mapped[float] = mapped_column(nullable=False)
+    expected_assists: Mapped[float] = mapped_column(nullable=False)
+    expected_goal_involvements: Mapped[float] = mapped_column(nullable=False)
+    expected_goals_conceded: Mapped[float] = mapped_column(nullable=False)
+
+    value: Mapped[int] = mapped_column(Integer, nullable=False)
+    transfers_balance: Mapped[int] = mapped_column(Integer, nullable=False)
+    selected: Mapped[int] = mapped_column(Integer, nullable=False)
+    transfers_in: Mapped[int] = mapped_column(Integer, nullable=False)
+    transfers_out: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    modified: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+class PlayerPastSeason(Base):
+    __tablename__ = "PlayerPastSeasons"
+
+    season_name: Mapped[str] = mapped_column(String, primary_key=True)
+    player_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    element_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_cost: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_cost: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    total_points: Mapped[int] = mapped_column(Integer, nullable=False)
+    minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    goals_scored: Mapped[int] = mapped_column(Integer, nullable=False)
+    assists: Mapped[int] = mapped_column(Integer, nullable=False)
+    clean_sheets: Mapped[int] = mapped_column(Integer, nullable=False)
+    goals_conceded: Mapped[int] = mapped_column(Integer, nullable=False)
+    own_goals: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    penalties_saved: Mapped[int] = mapped_column(Integer, nullable=False)
+    penalties_missed: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    yellow_cards: Mapped[int] = mapped_column(Integer, nullable=False)
+    red_cards: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    saves: Mapped[int] = mapped_column(Integer, nullable=False)
+    bonus: Mapped[int] = mapped_column(Integer, nullable=False)
+    bps: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    influence: Mapped[float] = mapped_column(nullable=False)
+    creativity: Mapped[float] = mapped_column(nullable=False)
+    threat: Mapped[float] = mapped_column(nullable=False)
+    ict_index: Mapped[float] = mapped_column(nullable=False)
+
+    clearances_blocks_interceptions: Mapped[int] = mapped_column(Integer, nullable=False)
+    recoveries: Mapped[int] = mapped_column(Integer, nullable=False)
+    tackles: Mapped[int] = mapped_column(Integer, nullable=False)
+    defensive_contribution: Mapped[int] = mapped_column(Integer, nullable=False)
+    starts: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    expected_goals: Mapped[float] = mapped_column(nullable=False)
+    expected_assists: Mapped[float] = mapped_column(nullable=False)
+    expected_goal_involvements: Mapped[float] = mapped_column(nullable=False)
+    expected_goals_conceded: Mapped[float] = mapped_column(nullable=False)
+
+class PlayerUpcomingFixture(Base):
+    __tablename__ = "PlayerUpcomingFixtures"
+
+    fixture_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    player_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    code: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    team_h: Mapped[int] = mapped_column(Integer, nullable=False)
+    team_h_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    team_a: Mapped[int] = mapped_column(Integer, nullable=False)
+    team_a_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    event: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_name: Mapped[str] = mapped_column(String, nullable=False)
+
+    finished: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    provisional_start_time: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    kickoff_time: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
+
+    is_home: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    difficulty: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+
+class TeamMetric(Base):
+    __tablename__ = "TeamMetric"
+
+    team_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    # Away game aggregates (last up to 3)
+    no_games_a: Mapped[int] = mapped_column(Integer, nullable=False)
+    no_goals_scored_a: Mapped[int] = mapped_column(Integer, nullable=False)
+    no_goals_conceded_a: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Home game aggregates (last up to 3)
+    no_games_h: Mapped[int] = mapped_column(Integer, nullable=False)
+    no_goals_scored_h: Mapped[int] = mapped_column(Integer, nullable=False)
+    no_goals_conceded_h: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Derived strength metrics (calculated later)
+    home_strength_defence: Mapped[float] = mapped_column(Float, nullable=False)
+    away_strength_defence: Mapped[float] = mapped_column(Float, nullable=False)
+    home_strength_attack: Mapped[float] = mapped_column(Float, nullable=False)
+    away_strength_attack: Mapped[float] = mapped_column(Float, nullable=False)
