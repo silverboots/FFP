@@ -363,3 +363,34 @@ class PlayerMetric(Base):
     # Derived ranking metrics (calculated later)
     player_rating: Mapped[float] = mapped_column(Float, nullable=False)
     player_rank: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class UserPlayers(Base):
+    __tablename__ = "user_players"
+
+    element: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    user_team_id: Mapped[int] = mapped_column(
+        Integer,
+        index=True,
+        nullable=False,
+    )
+
+    # Squad position (1–15)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # FPL multipliers (1, 2, 3)
+    multiplier: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Captaincy flags
+    is_captain: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    is_vice_captain: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    # Player type (1 GK, 2 DEF, 3 MID, 4 FWD)
+    element_type: Mapped[int] = mapped_column(Integer, nullable=False)

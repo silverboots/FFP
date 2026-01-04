@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from database.helpers import init_db
+from database.sync_helpers import init_db
 from auth.auth_services import create_user, authenticate
 from fplapi.fpl_services import fetch_fpl_entry, FPLError
 

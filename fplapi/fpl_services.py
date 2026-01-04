@@ -95,4 +95,36 @@ def fetch_fpl_player_summary(player_id: int) -> dict:
 
     return data
 
+def fetch_fpl_team(entry_id: int, gameweek: int) -> dict:
+    """
+    Fetch a team's picks for a specific gameweek using their FPL entry ID.
+    """
+    if entry_id <= 0:
+        raise ValueError("entry_id must be a positive integer")
 
+    if gameweek <= 0:
+        raise ValueError("gameweek must be a positive integer")
+
+    url = f"{FPL_BASE_URL}/entry/{entry_id}/event/{gameweek}/picks/"
+
+    try:
+        resp = requests.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.exceptions.HTTPError as e:
+        raise FPLError(f"FPL HTTP error: {e}") from e
+    except requests.exceptions.RequestException as e:
+        raise FPLError(f"FPL request failed: {e}") from e
+    except ValueError as e:
+        # .json() parse error
+        raise FPLError("FPL response was not valid JSON") from e
+
+    # Sanity checks (documented response shape)
+    if (
+        not isinstance(data, dict)
+        or "picks" not in data
+        or "entry_history" not in data
+    ):
+        raise FPLError("FPL team response shape unexpected (missing 'picks' or 'entry_history')")
+
+    return data

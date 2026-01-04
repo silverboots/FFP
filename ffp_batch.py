@@ -1,5 +1,5 @@
-from fplapi.fpl_services import fetch_fpl_bootstrap, FPLError, fetch_fpl_player_summary, fetch_fpl_fixtures
-from database.helpers import (
+from fplapi.fpl_services import fetch_fpl_bootstrap, FPLError, fetch_fpl_player_summary, fetch_fpl_fixtures, fetch_fpl_team
+from database.sync_helpers import (
     init_db, 
     sync_teams, 
     sync_players, 
@@ -7,7 +7,9 @@ from database.helpers import (
     sync_player_upcoming_fixtures, 
     sync_player_past_seasons,
     sync_team_metrics,
-    sync_player_metrics
+    sync_player_metrics,
+    get_users,
+    sync_user_players
 )
 from database.db import SessionLocal
 """
@@ -32,6 +34,29 @@ try:
 
     if "elements" not in data:
         raise FPLError("No players (elements) in FPL bootstrap data")
+
+    if "events" not in data:
+        raise FPLError("No events in FPL bootstrap data")
+
+    gameweek = 1
+    for event in data["events"]:
+        if event["can_manage"]:
+            break
+        gameweek = event["id"]
+    
+    print(f"Gameweek is : {gameweek}")
+
+    print("get users")
+    user_players = []
+    with SessionLocal() as db:
+        users = get_users(db)
+        for i, user in enumerate(users):
+            print(f"get user picks ({i+1}/{len(users)})")
+            user_player_data = fetch_fpl_team(user.team_id, gameweek)
+            for item in user_player_data["picks"]:
+                item["user_team_id"] = user.team_id
+
+            user_players.extend(user_player_data["picks"])
 
     print("get team fixture data to calculate strength home and away")
     team_metrics_lookup = {} # used for quick lookup in player calcs
@@ -209,6 +234,7 @@ try:
         sync_player_past_seasons(db, past_seasons)
         sync_team_metrics(db, team_metrics_db)
         sync_player_metrics(db, ordered_player_metrics)
+        sync_user_players(db,user_players)
         pass
         
 except Exception as e:

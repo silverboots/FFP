@@ -1,16 +1,20 @@
 from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 from datetime import datetime
 
 from database.models import (
+    User,
     Team,
     Player,
     PlayerPastFixture,
     PlayerUpcomingFixture,
     PlayerPastSeason,
     TeamMetric,
-    PlayerMetric
+    PlayerMetric,
+    UserPlayers
+    
+
 )
 
 
@@ -424,4 +428,48 @@ def sync_player_metrics(
             for batch in chunked(rows, 25):  # SQLite safe
                 session.execute(
                     insert(PlayerMetric).values(batch)
+                )
+
+
+def get_users(
+    session: Session,
+):
+    print(f"get users")
+
+    with session.begin():
+        result = session.execute(select(User))
+        users = result.scalars().all()
+        print(f"found {len(users)} users")
+        return users
+
+def sync_user_players(
+    session: Session,
+    user_team_players: list[dict],
+):
+    print(f"sync user_team_players : {len(user_team_players)}")
+
+    rows = [
+        {
+            "element": p["element"],
+            "user_team_id": p["user_team_id"],
+
+            "position": p["position"],
+            "multiplier": p["multiplier"],
+
+            "is_captain": p["is_captain"],
+            "is_vice_captain": p["is_vice_captain"],
+
+            "element_type": p["element_type"],
+        }
+        for p in user_team_players
+    ]
+
+    with session.begin():
+        if rows:
+            # wipe and reinsert (same approach as other syncs)
+            session.execute(delete(UserPlayers))
+
+            for batch in chunked(rows, 25):  # SQLite safe
+                session.execute(
+                    insert(UserPlayers).values(batch)
                 )
