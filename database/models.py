@@ -188,51 +188,51 @@ class PlayerPastFixture(Base):
     was_home: Mapped[bool] = mapped_column(Boolean, nullable=False)
     kickoff_time: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
 
-    team_h_score: Mapped[int] = mapped_column(Integer, nullable=False)
-    team_a_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    team_h_score: Mapped[int] = mapped_column(Integer, nullable=True)
+    team_a_score: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    total_points: Mapped[int] = mapped_column(Integer, nullable=False)
-    minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_points: Mapped[int] = mapped_column(Integer, nullable=True)
+    minutes: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    goals_scored: Mapped[int] = mapped_column(Integer, nullable=False)
-    assists: Mapped[int] = mapped_column(Integer, nullable=False)
-    clean_sheets: Mapped[int] = mapped_column(Integer, nullable=False)
-    goals_conceded: Mapped[int] = mapped_column(Integer, nullable=False)
-    own_goals: Mapped[int] = mapped_column(Integer, nullable=False)
+    goals_scored: Mapped[int] = mapped_column(Integer, nullable=True)
+    assists: Mapped[int] = mapped_column(Integer, nullable=True)
+    clean_sheets: Mapped[int] = mapped_column(Integer, nullable=True)
+    goals_conceded: Mapped[int] = mapped_column(Integer, nullable=True)
+    own_goals: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    penalties_saved: Mapped[int] = mapped_column(Integer, nullable=False)
-    penalties_missed: Mapped[int] = mapped_column(Integer, nullable=False)
+    penalties_saved: Mapped[int] = mapped_column(Integer, nullable=True)
+    penalties_missed: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    yellow_cards: Mapped[int] = mapped_column(Integer, nullable=False)
-    red_cards: Mapped[int] = mapped_column(Integer, nullable=False)
+    yellow_cards: Mapped[int] = mapped_column(Integer, nullable=True)
+    red_cards: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    saves: Mapped[int] = mapped_column(Integer, nullable=False)
-    bonus: Mapped[int] = mapped_column(Integer, nullable=False)
-    bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    saves: Mapped[int] = mapped_column(Integer, nullable=True)
+    bonus: Mapped[int] = mapped_column(Integer, nullable=True)
+    bps: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    influence: Mapped[float] = mapped_column(nullable=False)
-    creativity: Mapped[float] = mapped_column(nullable=False)
-    threat: Mapped[float] = mapped_column(nullable=False)
-    ict_index: Mapped[float] = mapped_column(nullable=False)
+    influence: Mapped[float] = mapped_column(nullable=True)
+    creativity: Mapped[float] = mapped_column(nullable=True)
+    threat: Mapped[float] = mapped_column(nullable=True)
+    ict_index: Mapped[float] = mapped_column(nullable=True)
 
-    clearances_blocks_interceptions: Mapped[int] = mapped_column(Integer, nullable=False)
-    recoveries: Mapped[int] = mapped_column(Integer, nullable=False)
-    tackles: Mapped[int] = mapped_column(Integer, nullable=False)
-    defensive_contribution: Mapped[int] = mapped_column(Integer, nullable=False)
-    starts: Mapped[int] = mapped_column(Integer, nullable=False)
+    clearances_blocks_interceptions: Mapped[int] = mapped_column(Integer, nullable=True)
+    recoveries: Mapped[int] = mapped_column(Integer, nullable=True)
+    tackles: Mapped[int] = mapped_column(Integer, nullable=True)
+    defensive_contribution: Mapped[int] = mapped_column(Integer, nullable=True)
+    starts: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    expected_goals: Mapped[float] = mapped_column(nullable=False)
-    expected_assists: Mapped[float] = mapped_column(nullable=False)
-    expected_goal_involvements: Mapped[float] = mapped_column(nullable=False)
-    expected_goals_conceded: Mapped[float] = mapped_column(nullable=False)
+    expected_goals: Mapped[float] = mapped_column(nullable=True)
+    expected_assists: Mapped[float] = mapped_column(nullable=True)
+    expected_goal_involvements: Mapped[float] = mapped_column(nullable=True)
+    expected_goals_conceded: Mapped[float] = mapped_column(nullable=True)
 
-    value: Mapped[int] = mapped_column(Integer, nullable=False)
-    transfers_balance: Mapped[int] = mapped_column(Integer, nullable=False)
-    selected: Mapped[int] = mapped_column(Integer, nullable=False)
-    transfers_in: Mapped[int] = mapped_column(Integer, nullable=False)
-    transfers_out: Mapped[int] = mapped_column(Integer, nullable=False)
+    value: Mapped[int] = mapped_column(Integer, nullable=True)
+    transfers_balance: Mapped[int] = mapped_column(Integer, nullable=True)
+    selected: Mapped[int] = mapped_column(Integer, nullable=True)
+    transfers_in: Mapped[int] = mapped_column(Integer, nullable=True)
+    transfers_out: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    modified: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    modified: Mapped[bool] = mapped_column(Boolean, nullable=True)
 
 class PlayerPastSeason(Base):
     __tablename__ = "PlayerPastSeasons"
@@ -333,3 +333,33 @@ class TeamMetric(Base):
     away_strength_defence: Mapped[float] = mapped_column(Float, nullable=False)
     home_strength_attack: Mapped[float] = mapped_column(Float, nullable=False)
     away_strength_attack: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class PlayerMetric(Base):
+    __tablename__ = "PlayerMetric"
+
+    player_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    # Historic performance metrics
+    total_points_per_pound: Mapped[float] = mapped_column(Float, nullable=False)
+    points_per_pound_last_3_games: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Minutes / starting behaviour
+    min_per_90: Mapped[float] = mapped_column(Float, nullable=False)
+    early_sub: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    # Availability / selection
+    selection_likelihood: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Upcoming fixture difficulty (next 3)
+    team_difficulty_next_3: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Derived ranking metrics (calculated later)
+    player_rating: Mapped[float] = mapped_column(Float, nullable=False)
+    player_rank: Mapped[int] = mapped_column(Integer, nullable=False)

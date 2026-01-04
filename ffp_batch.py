@@ -6,7 +6,8 @@ from database.helpers import (
     sync_player_past_fixtures, 
     sync_player_upcoming_fixtures, 
     sync_player_past_seasons,
-    sync_team_metrics
+    sync_team_metrics,
+    sync_player_metrics
 )
 from database.db import SessionLocal
 """
@@ -96,6 +97,9 @@ try:
     past_fixtures = []
     upcoming_fixtures = []
     past_seasons = []
+
+    player_metrics = []
+
     for i, player in enumerate(data["elements"]):
         print(f"processing player ({i+1}/{len(data['elements'])}) {player['first_name']} {player['second_name']}")
         # call api to get player summary
@@ -114,19 +118,97 @@ try:
         past_seasons.extend(player_data["history_past"])
 
         # calculate player metrics
+        points_last_3_games = 0
+        starts = 0
+        starter_minutes = 0
 
-        if i >= 0:
-            break
+        last_3_count = 0
+
+        # calculate metrics for historic games in reverse order or being player
+        for f, fixture in enumerate(reversed(player_data["history"])):
+            # FPL sometimes provides unset data when in middle of game week, so ignore for calcs
+            if fixture['total_points'] is None or fixture['minutes'] is None or fixture['starts'] is None:
+                continue
+
+            if last_3_count < 2:
+                last_3_count += 1
+                points_last_3_games += fixture['total_points']
+            
+            if fixture['starts'] == 1:
+                starts += 1
+                starter_minutes += fixture['minutes']
+        
+        average_points_last_3_games = 0 if last_3_count == 0 else points_last_3_games / last_3_count
+
+        min_per_90 = 0 if starter_minutes == 0 else starter_minutes / starts
+        early_sub = min_per_90 < 60
+
+        # calculate metrics for upcoming games
+        no_future_games = 0
+        total_difficulty_next_3 = 0
+        for f, fixture in enumerate(player_data["fixtures"]):
+            no_future_games += 1
+            opposing_team = fixture["team_a"] if fixture["is_home"] else fixture["team_h"]
+
+            if player["element_type"] in [1, 2]: # GK and def
+                if fixture["is_home"]:
+                    total_difficulty_next_3 += team_metrics_lookup[opposing_team]["away_strength_attack"]
+                else:
+                    total_difficulty_next_3 += team_metrics_lookup[opposing_team]["home_strength_attack"]
+            else: # mid or attack
+                if fixture["is_home"]:
+                    total_difficulty_next_3 += team_metrics_lookup[opposing_team]["away_strength_defence"]
+                else:
+                    total_difficulty_next_3 += team_metrics_lookup[opposing_team]["home_strength_defence"]
+
+            if f >= 2: # only need to look at next 3 games
+                break
+
+        average_difficulty_next_3 = 0 if no_future_games == 0 else total_difficulty_next_3 / no_future_games
+
+        if player['status'] == 'i' or player['status'] == 's': # i = injuried s = suspended
+            selection_likelihood = 0
+        elif player['status'] == 'd' and early_sub: # doubtful
+            selection_likelihood = 50
+        elif player['status'] == 'd': # doubtful
+            selection_likelihood = 67
+        elif player['status'] == 'a' and early_sub: # available
+            selection_likelihood = 80
+        else:
+            selection_likelihood = 95 
+
+
+        player_metric = {
+            "player_id": player['id'],
+            "total_points_per_pound": player['total_points'] / player['now_cost'],
+            'points_per_pound_last_3_games': points_last_3_games / player['now_cost'],
+            'min_per_90': min_per_90,
+            'early_sub': early_sub,
+            "selection_likelihood": selection_likelihood,
+            "team_difficulty_next_3": average_difficulty_next_3,
+        }
+
+        player_metric["player_rating"] = (selection_likelihood * player_metric['points_per_pound_last_3_games']) / average_difficulty_next_3
+
+        player_metrics.append(player_metric)
+
+        # if i >= 10:
+        #     break
+
+    ordered_player_metrics = sorted(player_metrics, key=lambda d: d['player_rating'], reverse = True)
+    for i, value in enumerate(ordered_player_metrics):
+        value["player_rank"] = i + 1
 
 
     print("save data to db")
     with SessionLocal() as db:
-        # sync_teams(db, data["teams"])
-        # sync_players(db, data["elements"])
-        # sync_player_past_fixtures(db, past_fixtures)
-        # sync_player_upcoming_fixtures(db, upcoming_fixtures)
-        # sync_player_past_seasons(db, past_seasons)
+        sync_teams(db, data["teams"])
+        sync_players(db, data["elements"])
+        sync_player_past_fixtures(db, past_fixtures)
+        sync_player_upcoming_fixtures(db, upcoming_fixtures)
+        sync_player_past_seasons(db, past_seasons)
         sync_team_metrics(db, team_metrics_db)
+        sync_player_metrics(db, ordered_player_metrics)
         pass
         
 except Exception as e:

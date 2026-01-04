@@ -9,7 +9,8 @@ from database.models import (
     PlayerPastFixture,
     PlayerUpcomingFixture,
     PlayerPastSeason,
-    TeamMetric
+    TeamMetric,
+    PlayerMetric
 )
 
 
@@ -381,4 +382,46 @@ def sync_team_metrics(
             for batch in chunked(rows, 25):  # SQLite safe
                 session.execute(
                     insert(TeamMetric).values(batch)
+                )
+
+
+def sync_player_metrics(
+    session: Session,
+    player_metrics: list[dict],
+):
+    print(f"sync player_metrics : {len(player_metrics)}")
+
+    rows = [
+        {
+            "player_id": p["player_id"],
+
+            # Historic performance
+            "total_points_per_pound": p["total_points_per_pound"],
+            "points_per_pound_last_3_games": p["points_per_pound_last_3_games"],
+
+            # Minutes / starting behaviour
+            "min_per_90": p["min_per_90"],
+            "early_sub": p["early_sub"],
+
+            # Availability
+            "selection_likelihood": p["selection_likelihood"],
+
+            # Upcoming fixtures
+            "team_difficulty_next_3": p["team_difficulty_next_3"],
+
+            # Derived metrics
+            "player_rating": p["player_rating"],
+            "player_rank": p["player_rank"],
+        }
+        for p in player_metrics
+    ]
+
+    with session.begin():
+        if rows:
+            # wipe and reinsert (same approach as teams / players)
+            session.execute(delete(PlayerMetric))
+
+            for batch in chunked(rows, 25):  # SQLite safe
+                session.execute(
+                    insert(PlayerMetric).values(batch)
                 )
