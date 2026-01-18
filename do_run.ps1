@@ -1,1 +1,1 @@
- streamlit run .\Main_Menu.py
+ streamlit run .\Home.py

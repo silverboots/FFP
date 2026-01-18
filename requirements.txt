@@ -4,3 +4,4 @@ sqlalchemy
 passlib
 bcrypt
 requests
+extra-streamlit-components

@@ -402,6 +402,7 @@ def sync_player_metrics(
             # Historic performance
             "total_points_per_pound": p["total_points_per_pound"],
             "points_per_pound_last_3_games": p["points_per_pound_last_3_games"],
+            "points_last_3_games": p["points_last_3_games"],
 
             # Minutes / starting behaviour
             "min_per_90": p["min_per_90"],
@@ -409,6 +410,7 @@ def sync_player_metrics(
 
             # Availability
             "selection_likelihood": p["selection_likelihood"],
+            "games_played_factor": p["games_played_factor"],
 
             # Upcoming fixtures
             "team_difficulty_next_3": p["team_difficulty_next_3"],
@@ -416,6 +418,7 @@ def sync_player_metrics(
             # Derived metrics
             "player_rating": p["player_rating"],
             "player_rank": p["player_rank"],
+            "position_rank": p["position_rank"],
         }
         for p in player_metrics
     ]
@@ -473,3 +476,32 @@ def sync_user_players(
                 session.execute(
                     insert(UserPlayers).values(batch)
                 )
+
+
+def sync_single_user_players(
+    session: Session,
+    user_team_id: int,
+    picks_data: list[dict],
+):
+    """Sync a single user's team picks without affecting other users."""
+    rows = [
+        {
+            "user_team_id": user_team_id,
+            "element": p["element"],
+            "position": p["position"],
+            "multiplier": p["multiplier"],
+            "is_captain": p["is_captain"],
+            "is_vice_captain": p["is_vice_captain"],
+            "element_type": p["element_type"],
+        }
+        for p in picks_data
+    ]
+
+    with session.begin():
+        # Delete only this user's existing picks
+        session.execute(
+            delete(UserPlayers).where(UserPlayers.user_team_id == user_team_id)
+        )
+        # Insert new picks
+        if rows:
+            session.execute(insert(UserPlayers).values(rows))

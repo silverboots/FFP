@@ -349,6 +349,7 @@ class PlayerMetric(Base):
     # Historic performance metrics
     total_points_per_pound: Mapped[float] = mapped_column(Float, nullable=False)
     points_per_pound_last_3_games: Mapped[float] = mapped_column(Float, nullable=False)
+    points_last_3_games: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Minutes / starting behaviour
     min_per_90: Mapped[float] = mapped_column(Float, nullable=False)
@@ -356,6 +357,7 @@ class PlayerMetric(Base):
 
     # Availability / selection
     selection_likelihood: Mapped[int] = mapped_column(Integer, nullable=False)
+    games_played_factor: Mapped[float] = mapped_column(Float, nullable=False)
 
     # Upcoming fixture difficulty (next 3)
     team_difficulty_next_3: Mapped[float] = mapped_column(Float, nullable=False)
@@ -363,21 +365,22 @@ class PlayerMetric(Base):
     # Derived ranking metrics (calculated later)
     player_rating: Mapped[float] = mapped_column(Float, nullable=False)
     player_rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    position_rank: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class UserPlayers(Base):
     __tablename__ = "user_players"
 
-    element: Mapped[int] = mapped_column(
+    user_team_id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
-        unique=True,
         index=True,
         nullable=False,
     )
 
-    user_team_id: Mapped[int] = mapped_column(
+    element: Mapped[int] = mapped_column(
         Integer,
+        primary_key=True,
         index=True,
         nullable=False,
     )

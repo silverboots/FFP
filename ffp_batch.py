@@ -12,6 +12,9 @@ from database.sync_helpers import (
     sync_user_players
 )
 from database.db import SessionLocal
+from collections import defaultdict
+
+
 """
     This file represents the batch process for the FFP system.  
     - Data is collected from the FPL apis
@@ -105,18 +108,74 @@ try:
 
 
 
-    print("create teams dict")
+    print("create teams dict - calculating normalized attack/defense scores")
+
+    # Find min/max values across all teams for normalization
+    home_gs_values = [tm["no_goals_scored_h"] for tm in team_metrics_lookup.values() if tm["no_games_h"] > 0]
+    home_gc_values = [tm["no_goals_conceded_h"] for tm in team_metrics_lookup.values() if tm["no_games_h"] > 0]
+    away_gs_values = [tm["no_goals_scored_a"] for tm in team_metrics_lookup.values() if tm["no_games_a"] > 0]
+    away_gc_values = [tm["no_goals_conceded_a"] for tm in team_metrics_lookup.values() if tm["no_games_a"] > 0]
+
+    if home_gs_values:
+        home_gs_min = min(home_gs_values)
+        home_gs_max = max(home_gs_values)
+    else:
+        home_gs_min = 0
+        home_gs_max = 0
+
+    if home_gc_values:
+        home_gc_min = min(home_gc_values)
+        home_gc_max = max(home_gc_values)
+    else:
+        home_gc_min = 0
+        home_gc_max = 0
+
+    if away_gs_values:
+        away_gs_min = min(away_gs_values)
+        away_gs_max = max(away_gs_values)
+    else:
+        away_gs_min = 0
+        away_gs_max = 0
+
+    if away_gc_values:
+        away_gc_min = min(away_gc_values)
+        away_gc_max = max(away_gc_values)
+    else:
+        away_gc_min = 0
+        away_gc_max = 0
+
     for i, team in enumerate(data["teams"]):
         print(f"processing team ({i+1}/{len(data['teams'])}) {team['name']}")
 
         # calculate team metrics where we have games for the team available (wont be there for start of season)
         if team["id"] in team_metrics_lookup:
-            team_metrics_lookup[team["id"]]["home_strength_defence"] = 20 - (team_metrics_lookup[team["id"]]["no_goals_conceded_h"]/team_metrics_lookup[team["id"]]["no_games_h"]) if team_metrics_lookup[team["id"]]["no_games_h"] > 0 else 0
-            team_metrics_lookup[team["id"]]["away_strength_defence"] = 20 - (team_metrics_lookup[team["id"]]["no_goals_conceded_a"]/team_metrics_lookup[team["id"]]["no_games_a"]) if team_metrics_lookup[team["id"]]["no_games_a"] > 0 else 0
-            team_metrics_lookup[team["id"]]["home_strength_attack"] = team_metrics_lookup[team["id"]]["no_goals_scored_h"]/team_metrics_lookup[team["id"]]["no_games_h"] if team_metrics_lookup[team["id"]]["no_games_h"] > 0 else 0
-            team_metrics_lookup[team["id"]]["away_strength_attack"] = team_metrics_lookup[team["id"]]["no_goals_scored_a"]/team_metrics_lookup[team["id"]]["no_games_a"] if team_metrics_lookup[team["id"]]["no_games_a"] > 0 else 0
+            tm = team_metrics_lookup[team["id"]]
 
-            team_metrics_db.append(team_metrics_lookup[team["id"]])
+            # Attack score: higher goals scored is better -> direct min-max normalization
+            # AttackScore = (GS - GS_min) / (GS_max - GS_min)
+            if tm["no_games_h"] > 0 and home_gs_max != home_gs_min:
+                tm["home_strength_attack"] = (tm["no_goals_scored_h"] - home_gs_min) / (home_gs_max - home_gs_min)
+            else:
+                tm["home_strength_attack"] = 0.5
+
+            if tm["no_games_a"] > 0 and away_gs_max != away_gs_min:
+                tm["away_strength_attack"] = (tm["no_goals_scored_a"] - away_gs_min) / (away_gs_max - away_gs_min)
+            else:
+                tm["away_strength_attack"] = 0.5
+
+            # Defense score: lower goals conceded is better -> reversed min-max normalization
+            # DefenseScore = (GC_max - GC) / (GC_max - GC_min)
+            if tm["no_games_h"] > 0 and home_gc_max != home_gc_min:
+                tm["home_strength_defence"] = (home_gc_max - tm["no_goals_conceded_h"]) / (home_gc_max - home_gc_min)
+            else:
+                tm["home_strength_defence"] = 0.5
+
+            if tm["no_games_a"] > 0 and away_gc_max != away_gc_min:
+                tm["away_strength_defence"] = (away_gc_max - tm["no_goals_conceded_a"]) / (away_gc_max - away_gc_min)
+            else:
+                tm["away_strength_defence"] = 0.5
+
+            team_metrics_db.append(tm)
 
     # initialise lists for full player details
     past_fixtures = []
@@ -124,6 +183,9 @@ try:
     past_seasons = []
 
     player_metrics = []
+
+    # Build player lookup for element_type (used for position ranking)
+    player_lookup = {p['id']: p for p in data["elements"]}
 
     for i, player in enumerate(data["elements"]):
         print(f"processing player ({i+1}/{len(data['elements'])}) {player['first_name']} {player['second_name']}")
@@ -146,8 +208,12 @@ try:
         points_last_3_games = 0
         starts = 0
         starter_minutes = 0
+        games_played_last_3_gw = 0
 
         last_3_count = 0
+
+        # Determine which gameweeks count as "last 3" (e.g., if GW=12, then GW 10, 11, 12)
+        min_gw_for_last_3 = max(1, gameweek - 2)
 
         # calculate metrics for historic games in reverse order or being player
         for f, fixture in enumerate(reversed(player_data["history"])):
@@ -155,18 +221,31 @@ try:
             if fixture['total_points'] is None or fixture['minutes'] is None or fixture['starts'] is None:
                 continue
 
-            if last_3_count < 2:
+            if last_3_count < 3:
                 last_3_count += 1
                 points_last_3_games += fixture['total_points']
-            
+
+            # Only count games played in the actual last 3 gameweeks for the factor
+            fixture_round = fixture.get('round', 0)
+            if fixture_round >= min_gw_for_last_3 and fixture['minutes'] > 0:
+                games_played_last_3_gw += 1
+
             if fixture['starts'] == 1:
                 starts += 1
                 starter_minutes += fixture['minutes']
-        
+
         average_points_last_3_games = 0 if last_3_count == 0 else points_last_3_games / last_3_count
 
         min_per_90 = 0 if starter_minutes == 0 else starter_minutes / starts
         early_sub = min_per_90 < 60
+
+        # Calculate games played factor: games where player got minutes / gameweeks available (max 3)
+        # Uses the season gameweek to determine how many gameweeks have occurred
+        available_gameweeks = min(gameweek, 3)
+        if available_gameweeks == 0:
+            games_played_factor = 1.0
+        else:
+            games_played_factor = games_played_last_3_gw / available_gameweeks
 
         # calculate metrics for upcoming games
         no_future_games = 0
@@ -191,25 +270,30 @@ try:
 
         average_difficulty_next_3 = 0 if no_future_games == 0 else total_difficulty_next_3 / no_future_games
 
-        if player['status'] == 'i' or player['status'] == 's': # i = injuried s = suspended
-            selection_likelihood = 0
+        # Calculate base selection likelihood from status
+        if player['status'] == 'i' or player['status'] == 's': # i = injured s = suspended
+            base_selection_likelihood = 0
         elif player['status'] == 'd' and early_sub: # doubtful
-            selection_likelihood = 50
+            base_selection_likelihood = 50
         elif player['status'] == 'd': # doubtful
-            selection_likelihood = 67
+            base_selection_likelihood = 67
         elif player['status'] == 'a' and early_sub: # available
-            selection_likelihood = 80
+            base_selection_likelihood = 80
         else:
-            selection_likelihood = 95 
+            base_selection_likelihood = 95
 
+        # Apply games played factor to selection likelihood
+        selection_likelihood = int(base_selection_likelihood * games_played_factor)
 
         player_metric = {
             "player_id": player['id'],
             "total_points_per_pound": player['total_points'] / player['now_cost'],
+            "points_last_3_games": points_last_3_games,
             'points_per_pound_last_3_games': points_last_3_games / player['now_cost'],
             'min_per_90': min_per_90,
             'early_sub': early_sub,
             "selection_likelihood": selection_likelihood,
+            "games_played_factor": games_played_factor,
             "team_difficulty_next_3": average_difficulty_next_3,
         }
 
@@ -217,12 +301,35 @@ try:
 
         player_metrics.append(player_metric)
 
+        # used for testing to reduce time
         # if i >= 10:
         #     break
 
-    ordered_player_metrics = sorted(player_metrics, key=lambda d: d['player_rating'], reverse = True)
-    for i, value in enumerate(ordered_player_metrics):
-        value["player_rank"] = i + 1
+    # calculate overall player rank
+    ordered_player_metrics = sorted(
+        player_metrics,
+        key=lambda d: d["player_rating"],
+        reverse=True
+    )
+
+    for i, player in enumerate(ordered_player_metrics):
+        player["player_rank"] = i + 1
+
+    # Group players by element_type using player_lookup
+    players_by_position = defaultdict(list)
+    for pm in player_metrics:
+        element_type = player_lookup[pm["player_id"]]["element_type"]
+        players_by_position[element_type].append(pm)
+
+    # Sort each position group and assign position_rank
+    for element_type, players in players_by_position.items():
+        ordered_players = sorted(
+            players,
+            key=lambda d: d["player_rating"],
+            reverse=True
+        )
+        for i, player in enumerate(ordered_players):
+            player["position_rank"] = i + 1
 
 
     print("save data to db")
@@ -233,7 +340,7 @@ try:
         sync_player_upcoming_fixtures(db, upcoming_fixtures)
         sync_player_past_seasons(db, past_seasons)
         sync_team_metrics(db, team_metrics_db)
-        sync_player_metrics(db, ordered_player_metrics)
+        sync_player_metrics(db, player_metrics)
         sync_user_players(db,user_players)
         pass
         
