@@ -1,18 +1,13 @@
 import streamlit as st
-st.set_page_config(page_title="Player News", page_icon="📰", layout="wide")
+
+from auth.session_manager import get_cookie_manager, check_auth
+from database.lookup_helpers import get_all_player_news
+
+from streamlit_helpers.common_modules import style_alternating_rows
 
 import pandas as pd
 
-
-def style_alternating_rows(df: pd.DataFrame):
-    """Apply alternating row colors to a dataframe."""
-    def highlight_rows(row):
-        if row.name % 2 == 0:
-            return ["background-color: #f8f9fa"] * len(row)
-        return ["background-color: #ffffff"] * len(row)
-    return df.style.apply(highlight_rows, axis=1)
-from auth.session_manager import get_cookie_manager, check_auth
-from database.lookup_helpers import get_all_player_news
+st.set_page_config(page_title="Player News", page_icon="📰", layout="wide")
 
 # Cookie manager for session persistence
 cookie_manager = get_cookie_manager()

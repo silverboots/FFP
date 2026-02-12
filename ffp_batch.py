@@ -106,10 +106,7 @@ try:
                 team_metrics_lookup[fixture["team_h"]]["no_goals_conceded_h"] += fixture["team_a_score"]
 
 
-
-
     print("create teams dict - calculating normalized attack/defense scores")
-
     # Find min/max values across all teams for normalization
     home_gs_values = [tm["no_goals_scored_h"] for tm in team_metrics_lookup.values() if tm["no_games_h"] > 0]
     home_gc_values = [tm["no_goals_conceded_h"] for tm in team_metrics_lookup.values() if tm["no_games_h"] > 0]

@@ -1,9 +1,10 @@
 import streamlit as st
-st.set_page_config(page_title="Player Assessment", page_icon="🎯", layout="wide")
 
 import pandas as pd
 from auth.session_manager import get_cookie_manager, check_auth
 from database.lookup_helpers import get_all_teams, search_players, get_player_details, get_user_team
+
+st.set_page_config(page_title="Player Assessment", page_icon="🎯", layout="wide")
 
 # Cookie manager for session persistence
 cookie_manager = get_cookie_manager()

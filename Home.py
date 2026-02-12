@@ -1,25 +1,18 @@
+from database.sync_helpers import init_db
+from database.lookup_helpers import get_user_team, get_current_gameweek
+from auth.auth_services import create_user, authenticate
+from auth.session_manager import get_cookie_manager, check_auth, login_user, logout
+from fplapi.fpl_services import fetch_fpl_entry, FPLError
+from streamlit_helpers.common_modules import style_alternating_rows
+
+import pandas as pd
+
 import streamlit as st
 st.set_page_config(
     page_title="Home",
     page_icon="🏠",
     layout="wide"
 )
-
-import pandas as pd
-
-
-def style_alternating_rows(df: pd.DataFrame):
-    """Apply alternating row colors to a dataframe."""
-    def highlight_rows(row):
-        if row.name % 2 == 0:
-            return ["background-color: #f8f9fa"] * len(row)
-        return ["background-color: #ffffff"] * len(row)
-    return df.style.apply(highlight_rows, axis=1)
-from database.sync_helpers import init_db
-from database.lookup_helpers import get_user_team, get_current_gameweek
-from auth.auth_services import create_user, authenticate
-from auth.session_manager import get_cookie_manager, check_auth, login_user, logout
-from fplapi.fpl_services import fetch_fpl_entry, FPLError
 
 # Initialize database
 init_db()

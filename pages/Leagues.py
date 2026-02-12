@@ -1,10 +1,11 @@
 import streamlit as st
-st.set_page_config(page_title="My Leagues", page_icon="🏆", layout="wide")
 
 import pandas as pd
 from auth.session_manager import get_cookie_manager, check_auth
 from database.lookup_helpers import get_user_team_id
 from fplapi.fpl_services import fetch_fpl_entry_leagues, fetch_all_league_standings, FPLError
+
+st.set_page_config(page_title="My Leagues", page_icon="🏆", layout="wide")
 
 # Cookie manager for session persistence
 cookie_manager = get_cookie_manager()
@@ -55,9 +56,6 @@ if not leagues:
     st.info("You are not in any leagues.")
     st.stop()
 
-# Filter out massive public leagues (like "Overall" with millions of entries)
-# Keep leagues where user has a rank, typically private/smaller leagues
-private_leagues = [l for l in leagues if l.get("entry_rank") and l.get("entry_rank") < 1000000]
 
 # Summary metrics
 col1, col2, col3 = st.columns(3)
