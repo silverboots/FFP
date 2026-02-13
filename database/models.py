@@ -293,7 +293,7 @@ class PlayerUpcomingFixture(Base):
     team_a: Mapped[int] = mapped_column(Integer, nullable=False)
     team_a_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    event: Mapped[int] = mapped_column(Integer, nullable=False)
+    event: Mapped[int] = mapped_column(Integer, nullable=True)
     event_name: Mapped[str] = mapped_column(String, nullable=False)
 
     finished: Mapped[bool] = mapped_column(Boolean, nullable=False)

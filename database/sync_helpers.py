@@ -275,7 +275,7 @@ def sync_player_upcoming_fixtures(
             "team_a": f["team_a"],
             "team_a_score": f["team_a_score"],
             "event": f["event"],
-            "event_name": f["event_name"],
+            "event_name": f.get("event_name", "TBD"),
             "finished": f["finished"],
             "minutes": f["minutes"],
             "provisional_start_time": f["provisional_start_time"],
